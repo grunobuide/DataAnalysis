@@ -57,6 +57,7 @@ if uploaded_file is not None:
             for err in errors:
                 st.write(f"- {err}")
         else:
+            
             # --- Data Cleaning Options ---
             st.subheader("Data Cleaning Options")
             drop_na = st.checkbox("Drop rows with missing values")
@@ -77,17 +78,7 @@ if uploaded_file is not None:
 
             st.subheader("Cleaned Data Preview")
             st.dataframe(df_clean.head())
-                        # --- Data Info ---
-            st.subheader("Data Info")
-            info_df = pd.DataFrame({
-                "Data Type": df_clean.dtypes,
-                "Missing Values": df_clean.isnull().sum(),
-                "Unique Values": df_clean.nunique()
-            })
-            st.dataframe(info_df)
-            st.subheader("Descriptive Statistics")
-            st.write(df_clean.describe())
-                        # --- Downloadable Reports ---
+            # --- Downloadable Reports ---
             st.subheader("Download Data & Reports")
             csv_clean = df_clean.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -104,6 +95,17 @@ if uploaded_file is not None:
                 file_name="descriptive_statistics.csv",
                 mime="text/csv"
             )
+                        # --- Data Info ---
+            st.subheader("Data Info")
+            info_df = pd.DataFrame({
+                "Data Type": df_clean.dtypes,
+                "Missing Values": df_clean.isnull().sum(),
+                "Unique Values": df_clean.nunique()
+            })
+            st.dataframe(info_df)
+            st.subheader("Descriptive Statistics")
+            st.write(df_clean.describe())
+
             numeric_cols = df_clean.select_dtypes(include='number').columns.tolist()
             if numeric_cols:
                 st.subheader("Histogram")
@@ -161,19 +163,63 @@ if uploaded_file is not None:
                     st.info("Need at least two numeric columns for pairplot.")
             else:
                 st.info("No numeric columns found for plotting.")
+            # --- Inferential Section ---
+            st.header("📊 Inferential Section")
+            st.markdown("Select a target column and features to perform basic inferential statistics and hypothesis testing.")
+
+            all_cols = df_clean.columns.tolist()
+            # Inferential Section
+            target_col = st.selectbox("Select target column", all_cols, key="infer_target")
+            feature_cols = st.multiselect(
+                "Select feature columns", [col for col in all_cols if col != target_col], default=[col for col in all_cols if col != target_col], key="infer_features"
+            )
+
+            if target_col and feature_cols:
+                import scipy.stats as stats
+
+                st.subheader("Correlation Analysis")
+                for feature in feature_cols:
+                    if pd.api.types.is_numeric_dtype(df_clean[feature]) and pd.api.types.is_numeric_dtype(df_clean[target_col]):
+                        corr, pval = stats.pearsonr(df_clean[feature], df_clean[target_col])
+                        st.write(f"**{feature} vs {target_col}:** Pearson r = {corr:.3f}, p-value = {pval:.3g}")
+                    else:
+                        st.write(f"**{feature} vs {target_col}:** Non-numeric data, correlation not computed.")
+
+                st.subheader("T-test / ANOVA")
+                if len(feature_cols) == 1:
+                    feature = feature_cols[0]
+                    if pd.api.types.is_numeric_dtype(df_clean[target_col]) and pd.api.types.is_categorical_dtype(df_clean[feature]):
+                        groups = [df_clean[target_col][df_clean[feature] == cat] for cat in df_clean[feature].unique()]
+                        if len(groups) == 2:
+                            tstat, pval = stats.ttest_ind(groups[0], groups[1], nan_policy='omit')
+                            st.write(f"T-test between groups of {feature}: t = {tstat:.3f}, p = {pval:.3g}")
+                        elif len(groups) > 2:
+                            fstat, pval = stats.f_oneway(*groups)
+                            st.write(f"ANOVA between groups of {feature}: F = {fstat:.3f}, p = {pval:.3g}")
+                        else:
+                            st.info("Not enough groups for t-test/ANOVA.")
+                    else:
+                        st.info("T-test/ANOVA requires a numeric target and a categorical feature.")
+                else:
+                    st.info("Select only one feature for t-test/ANOVA.")
+
+            else:
+                st.info("Select a target and at least one feature column for inference.")
              # --- Predictive Section ---
             st.header("🔮 Predictive Section")
             st.markdown("Select a target column and features to build a simple predictive model.")
 
             all_cols = df_clean.columns.tolist()
-            target_col = st.selectbox("Select target column", all_cols)
-            feature_cols = st.multiselect(
-                "Select feature columns", [col for col in all_cols if col != target_col], default=[col for col in all_cols if col != target_col]
+            # Predictive Section
+            target_col_pred = st.selectbox("Select target column", all_cols, key="pred_target")
+            feature_cols_pred = st.multiselect(
+                "Select feature columns", [col for col in all_cols if col != target_col_pred], default=[col for col in all_cols if col != target_col_pred], key="pred_features"
             )
 
-            if target_col and feature_cols:
-                X = df_clean[feature_cols]
-                y = df_clean[target_col]
+
+            if target_col_pred and feature_cols_pred:
+                X = df_clean[feature_cols_pred]
+                y = df_clean[target_col_pred]
 
                 # Handle categorical variables
                 X = pd.get_dummies(X, drop_first=True)
@@ -186,7 +232,7 @@ if uploaded_file is not None:
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
                 # Choose model type
-                if df_clean[target_col].dtype in [np.float64, np.int64] and len(np.unique(y)) > 10:
+                if df_clean[target_col_pred].dtype in [np.float64, np.int64] and len(np.unique(y)) > 10:
                     st.write("Regression problem detected.")
                     model = LinearRegression()
                     model.fit(X_train, y_train)
