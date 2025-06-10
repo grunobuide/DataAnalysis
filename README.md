@@ -16,6 +16,10 @@ A powerful and interactive Streamlit dashboard for data exploration, cleaning, v
   - Correlation heatmaps (select columns)
   - Scatter plots and pairplots (select columns)
   - Bar charts for categorical columns
+- **Inferential Section:**  
+  Perform basic inferential statistics and hypothesis testing:
+  - **Correlation Analysis:** Pearson correlation and p-value for numeric columns.
+  - **T-test / ANOVA:** Compare means between groups for a numeric target and categorical feature.
 - **Predictive Section:** Build simple regression or classification models interactively.
 - **Machine Learning Section:** Try different ML models (Logistic Regression, Random Forest, Linear Regression, Random Forest Regressor) and view metrics.
 - **Responsive Layout:** Visualizations and stats are arranged for easy comparison.
